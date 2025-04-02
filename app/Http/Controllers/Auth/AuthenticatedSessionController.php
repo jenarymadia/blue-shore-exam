@@ -19,7 +19,20 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return response()->noContent();
+        // Get the authenticated user
+        $user = Auth::user();
+
+        // Revoke previous tokens (optional, prevents multiple active tokens)
+        $user->tokens()->delete();
+
+        // Create a new token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response([
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => $user 
+        ]);
     }
 
     /**
@@ -27,12 +40,20 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): Response
     {
+        $user = $request->user();
+
+        if ($user) {
+            // Revoke all tokens for the user
+            $user->tokens()->delete();
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
-        return response()->noContent();
+        return response([
+            'message' => 'Logged out successfully',
+        ]);
     }
 }
